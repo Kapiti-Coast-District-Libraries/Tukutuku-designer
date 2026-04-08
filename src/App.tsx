@@ -27,7 +27,8 @@ import {
   Diamond,
   Wind,
   Sparkles,
-  PenTool
+  PenTool,
+  Image as ImageIcon
 } from 'lucide-react';
 
 // Traditional Tukutuku colors
@@ -148,7 +149,7 @@ export default function App() {
     setGrid(Array(rows).fill(null).map(() => Array(cols).fill(null)));
   };
 
-  const exportSVG = (stylized = false) => {
+  const getSVGString = (stylized = false) => {
     const padding = stylized ? 80 : 20;
     const footerHeight = stylized ? 100 : 0;
     const width = cols * cellSize + padding * 2;
@@ -157,7 +158,7 @@ export default function App() {
     let svgContent = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
     
     // Background
-    const bgColor = stylized ? "#1a1a1a" : "#262626";
+    const bgColor = "#ffffff";
     svgContent += `<rect width="100%" height="100%" fill="${bgColor}" />`;
     
     if (stylized) {
@@ -170,7 +171,7 @@ export default function App() {
           width="${width - borderPadding * 2}" 
           height="${height - borderPadding * 2}" 
           fill="none" 
-          stroke="#404040" 
+          stroke="#e5e5e5" 
           stroke-width="1" 
         />
         <rect 
@@ -179,7 +180,7 @@ export default function App() {
           width="${width - (borderPadding + 5) * 2}" 
           height="${height - (borderPadding + 5) * 2}" 
           fill="none" 
-          stroke="#404040" 
+          stroke="#e5e5e5" 
           stroke-width="0.5" 
         />
       `;
@@ -270,22 +271,63 @@ export default function App() {
       // Artwork Info
       const textY = height - 60;
       svgContent += `
-        <text x="${width / 2}" y="${textY}" text-anchor="middle" fill="white" font-family="serif" font-style="italic" font-size="24">${artworkTitle || 'Untitled Tukutuku'}</text>
-        <text x="${width / 2}" y="${textY + 30}" text-anchor="middle" fill="white" opacity="0.5" font-family="sans-serif" font-size="10" letter-spacing="3">DESIGNED BY: ${creatorName.toUpperCase() || 'UNKNOWN'}</text>
+        <text x="${width / 2}" y="${textY}" text-anchor="middle" fill="#1a1a1a" font-family="serif" font-style="italic" font-size="24">${artworkTitle || 'Untitled Tukutuku'}</text>
+        <text x="${width / 2}" y="${textY + 30}" text-anchor="middle" fill="#1a1a1a" opacity="0.5" font-family="sans-serif" font-size="10" letter-spacing="3">DESIGNED BY: ${creatorName.toUpperCase() || 'UNKNOWN'}</text>
       `;
     }
     
     svgContent += `</svg>`;
-    
+    return svgContent;
+  };
+
+  const exportSVG = () => {
+    const svgContent = getSVGString(false);
     const blob = new Blob([svgContent], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = stylized ? `tukutuku-${artworkTitle || 'artwork'}.svg` : 'tukutuku-pattern.svg';
+    link.download = 'tukutuku-pattern.svg';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const exportPNG = () => {
+    const stylized = true;
+    const padding = 80;
+    const footerHeight = 100;
+    const width = cols * cellSize + padding * 2;
+    const height = rows * cellSize + padding * 2 + footerHeight;
+    
+    const svgContent = getSVGString(stylized);
+    
+    const canvas = document.createElement('canvas');
+    const scale = 2; // Higher resolution
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new Image();
+    const svgBlob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    img.onload = () => {
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      
+      const pngUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = pngUrl;
+      link.download = `tukutuku-${artworkTitle.toLowerCase().replace(/\s+/g, '-') || 'stylized'}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
   };
 
   return (
@@ -306,18 +348,18 @@ export default function App() {
             <Info size={20} />
           </button>
           <button 
-            onClick={() => exportSVG(false)}
+            onClick={() => exportSVG()}
             className="flex items-center gap-2 px-6 py-3 border border-black/10 rounded-full hover:bg-black hover:text-white transition-all active:scale-95"
           >
             <Download size={18} />
             <span className="font-medium">Export Vector</span>
           </button>
           <button 
-            onClick={() => exportSVG(true)}
+            onClick={() => exportPNG()}
             className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-full hover:bg-neutral-800 transition-all active:scale-95 shadow-lg shadow-black/10"
           >
-            <Sparkles size={18} />
-            <span className="font-medium">Stylized Export</span>
+            <ImageIcon size={18} />
+            <span className="font-medium">Stylized PNG</span>
           </button>
         </div>
       </header>
@@ -500,18 +542,18 @@ export default function App() {
 
         {/* Canvas Area */}
         <section 
-          className="flex-1 bg-[#262626] overflow-auto p-10 flex items-center justify-center relative"
+          className="flex-1 bg-neutral-100 overflow-auto p-10 flex items-center justify-center relative"
           onMouseDown={() => setIsDragging(true)}
           onMouseUp={() => setIsDragging(false)}
           onMouseLeave={() => setIsDragging(false)}
         >
           <div 
-            className="relative shadow-2xl bg-[#1a1a1a]"
+            className="relative shadow-xl bg-white"
             style={{ 
               display: 'grid', 
               gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
               gridTemplateRows: `repeat(${rows}, ${cellSize}px)`,
-              border: '1px solid #404040'
+              border: '1px solid #e5e5e5'
             }}
           >
             {/* Symmetry Line */}
@@ -532,7 +574,7 @@ export default function App() {
                   style={{ 
                     width: cellSize, 
                     height: cellSize,
-                    border: '0.5px solid #333'
+                    border: '0.5px solid #f0f0f0'
                   }}
                 >
                   {/* The Stitch */}
